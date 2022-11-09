@@ -10,15 +10,14 @@ const esRoleValido = async(rol='') =>{
 
 const emailExiste = async(correo='') =>{
     const existeEmail = await Usuario.findOne({ correo });
-    if(!existeEmail){
+    if(existeEmail){
         throw new Error( `El correo ${ correo } ya existe` );
     }
 }
 
 const existeUsuarioPorId = async( id ) =>{
     const existeUsuario = await Usuario.findOne({ id });
-    console.log(existeUsuario);
-    if(!existeUsuario){
+    if(existeUsuario){
         throw new Error( `El usuario ${ id } no existe` );
     }
 }
