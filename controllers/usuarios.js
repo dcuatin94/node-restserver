@@ -53,7 +53,7 @@ const usuariosPut = async (req, resp = response)=>{
         resto.password = bcryptjs.hashSync( password, salt );
     }
 
-    const usuario = await Usuario.findByIdAndUpdate( id, resto, {new: true} );
+    const usuario = await Usuario.findByIdAndUpdate( id, resto);
 
     resp.json(
         {
@@ -70,12 +70,9 @@ const usuariosDelete = async (req, resp = response)=>{
     const { id } = req.params;
     // Fisicamente lo borramos
     //const usuario = await Usuario.findByIdAndDelete( id );
-    const usuario = await Usuario.findByIdAndUpdate(id, { estado: false });
-    //const usuarioAutenticado = req.usuario;
-    resp.json({
-        usuario,
-        //usuarioAutenticado
-    });
+    const usuario = await Usuario.findByIdAndUpdate(id, {estado:false});
+    //usuario.estado = false;
+    resp.json(usuario);
 }
 
 module.exports = {
