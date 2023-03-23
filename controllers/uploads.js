@@ -1,35 +1,93 @@
-const { response } = require("express");
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const { response, json } = require("express");
+const { subirArchivo } = require("../helpers/subir-archivo");
+const { Usuario, Producto } = require("../models");
 
-const cargarArchivos = (req, res=response) => {
-    if(!req.files || Object.keys(req.files).length === 0 || !req.files.archivo){
-        return res.status(400).json({ msg: 'No hay archivos que subir'});
+const cargarArchivos = async (req, res=response) => {
+    //Subir Archivos
+    try {
+        const nombre = await subirArchivo(req.files, ['pdf', 'txt'], 'textos');
+        //no restringir tipo de archivo
+        //const nombre = await subirArchivo(req.files, undefined, 'textos');
+        res.json({nombre});
+    } catch (msg) {
+        res.status(400).json({ msg });
     }
+}
 
-    const { archivo } = req.files;
-    const nombreCortado = archivo.name.split('.');
-    const extension = nombreCortado[ nombreCortado.length -1 ];
-    //Validar la extension
-    const extensionesValidas = ['png', 'jpg', 'jpeg', 'gif'];
-    if( !extensionesValidas.includes( extension)){
-        return res.status(400).json({
-            msg: `La extensión ${ extension } no es permitida, ${ extensionesValidas}`
-        });
+const actualizarImagen = async (req, res=response) =>{
+    const { id, coleccion } = req.params;
+    let modelo;
+
+    switch (coleccion) {
+        case 'usuarios':
+            modelo = await Usuario.findById(id);
+            if(!modelo){
+                return res.status(400).json( { msg: `No existe un usuario con el id: ${ id }`});
+            }
+            break;
+
+        case 'productos':
+            modelo = await Producto.findById(id);
+            if(!modelo){
+                return res.status(400).json( { msg: `No existe un producto con el id: ${ id }`});
+            }
+            break;
+    
+        default:
+            return json.status(500).json({ msg: 'Validacion no definida'});
     }
-
-    const nombreTemp = uuidv4() + '.' + extension;
-    const uploadPath = path.join( __dirname, '../uploads/', nombreTemp);
-
-    archivo.mv(uploadPath, (err) =>{
-        if(err){
-            console.log(err);
-            return res.status(500).json({err});
+    // Limpiar imagenes previas
+    if( modelo.img ){
+        // Hay que borrar la imagen del servidor
+        const pathImagen = path.join(__dirname, '../uploads', coleccion, modelo.img);
+        if ( fs.existsSync(pathImagen) ) {
+            fs.unlinkSync( pathImagen );
         }
-        res.json({msg:'El archivo se subio a: '+ uploadPath});
-    });
+    }
+
+    const nombre = await subirArchivo(req.files, undefined, coleccion);
+    modelo.img = nombre;
+    await modelo.save();
+    res.json( modelo );
+}
+
+const mostrarImagen = async (req, res=response) =>{
+    const { id, coleccion } = req.params;
+    let modelo;
+
+    switch (coleccion) {
+        case 'usuarios':
+            modelo = await Usuario.findById(id);
+            if(!modelo){
+                return res.status(400).json( { msg: `No existe un usuario con el id: ${ id }`});
+            }
+            break;
+
+        case 'productos':
+            modelo = await Producto.findById(id);
+            if(!modelo){
+                return res.status(400).json( { msg: `No existe un producto con el id: ${ id }`});
+            }
+            break;
+    
+        default:
+            return json.status(500).json({ msg: 'Validacion no definida'});
+    }
+    
+    if( modelo.img ){
+        const pathImagen = path.join(__dirname, '../uploads', coleccion, modelo.img)
+        if ( fs.existsSync(pathImagen) ) {
+            return res.sendFile(pathImagen);
+        }
+    }
+    const pathImagen = path.join(__dirname, '../assets', 'no-image.jpg')
+    return res.sendFile(pathImagen);
 }
 
 module.exports = {
-    cargarArchivos
+    cargarArchivos,
+    actualizarImagen,
+    mostrarImagen
 }
